@@ -109,7 +109,7 @@ class Gerenciador implements Runnable {
                         if(usuariosOnline.isEmpty()) {
                             this.outputData.writeUTF("Ainda não há usuários online no chat");
                         } else {
-                                this.outputData.writeUTF("Usúarios no chat: " + usuariosOnline);
+                            this.outputData.writeUTF("Usúarios no chat: " + usuariosOnline);
                         }
                         for (Gerenciador cliente : Server.vect) {
                             if(cliente.id != this.id && cliente.online)
@@ -143,11 +143,25 @@ class Gerenciador implements Runnable {
                         this.nome = "";
 
                     }else {
+                        Vector<String> recebidoVec = new Vector<>();
                         for (Gerenciador cliente : Server.vect) {
-                            if(cliente.id == this.id && cliente.online)
-                                cliente.outputData.writeUTF("Você: " + mensagem);
-                            else
+                            if(cliente.id != this.id && cliente.online){
                                 cliente.outputData.writeUTF(this.nome + ": "+ mensagem);
+                                recebidoVec.add(cliente.nome);
+                            }
+                        }
+
+                        if(recebidoVec.size() == 0){
+                            this.outputData.writeUTF("Você: " + mensagem + " (Ninguém recebeu a mensagem)");
+                        } else {
+                            String recebidoMensagem = "";
+                            for (int i = 0; i < recebidoVec.size(); i++){
+                                if(i == recebidoVec.size() - 1)
+                                    recebidoMensagem += recebidoVec.elementAt(i) + ".";
+                                else
+                                    recebidoMensagem += recebidoVec.elementAt(i) + ", ";
+                            }
+                            this.outputData.writeUTF("Você: " + mensagem + " (Mensagem recebida por: " + recebidoMensagem + ")") ;
                         }
                     }
                     if (false) {//essa aberracao so existe pq se nao da erro de codigo inalcancavel
