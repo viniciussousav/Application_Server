@@ -15,8 +15,7 @@ public class Server
         //o main so executa o servidor easy peasy
         Server servidor = new Server();
     }
-    private Server() //classe do servidor, que executa as threads
-    {
+    private Server() {
         //a porta usada para comunicacao
         int porta = 12345;
         //inicializacao do socket por causa do try catch :/
@@ -30,8 +29,7 @@ public class Server
 
 
         //os "clientes" vao ser criados a partir de agora
-        while (true) //loop infinito :(
-        {
+        while (true) {
             //inicializacao dos inputs e outputs e do novo socket, isso para o novo cliente
 
             DataInputStream inputData = null;
@@ -46,7 +44,6 @@ public class Server
                 //eles tem q estar no bloco try catch :/
             }
 
-
             //inicializando um novo gerente para o novo cliente.
             Gerenciador novo = new Gerenciador(NumDeClientes,novoSocket, inputData, outputData);
             //inicia a thread, p poder receber msgs de todos ao msm tempo :p
@@ -56,8 +53,9 @@ public class Server
             THREAD.start();
             NumDeClientes++;
         }
-    }
+    } //classe do servidor, que executa as threads
 }
+
 class Gerenciador implements Runnable {
     Scanner in = new Scanner(System.in);
     //lista de atributos do "cliente" como eu disse la em cima, so coloquei as necessarias para o funcionamento mais basico
@@ -67,6 +65,7 @@ class Gerenciador implements Runnable {
     String nome;
     boolean checkNome;
     int id = 0;
+    boolean online;
 
     // construtor
     public Gerenciador(int id, Socket novoSocket, DataInputStream inputData, DataOutputStream outputData) {
@@ -76,6 +75,7 @@ class Gerenciador implements Runnable {
         this.id = id;
         nome = "";
         checkNome = false;
+        online = true;
     }
 
     public void run() {
@@ -83,7 +83,7 @@ class Gerenciador implements Runnable {
         //servidor, receber mensagens :p
         //Os blocos try catch sao por causa dos erros :)
         String mensagem;
-        while (true)
+        while (online)
         {
             try
             {
@@ -99,6 +99,23 @@ class Gerenciador implements Runnable {
                         checkNome = true;
                         this.nome = inserirNome;
                         this.outputData.writeUTF("Bem vindo ao chat, " + this.nome);
+                        String usuariosOnline = "";
+                        for (Gerenciador cliente: Server.vect){
+                            if (!cliente.nome.isEmpty() && cliente.id != this.id && cliente.online) {
+                                usuariosOnline += "| " + cliente.nome;
+                            }
+                        }
+                        this.outputData.flush();
+                        if(usuariosOnline.isEmpty()) {
+                            this.outputData.writeUTF("Ainda não há usuários online no chat");
+                        } else {
+                                this.outputData.writeUTF("Usúarios no chat: " + usuariosOnline);
+                        }
+                        for (Gerenciador cliente : Server.vect) {
+                            if(cliente.id != this.id && cliente.online)
+                                cliente.outputData.writeUTF(this.nome + " entrou no chat");
+                        }
+
                     } else {
                         this.outputData.writeUTF("Nome já existente, tente novamente.");
                     }
@@ -108,26 +125,31 @@ class Gerenciador implements Runnable {
                     mensagem = inputData.readUTF();
                     Server.cache.addElement(mensagem);
 
-                    if(mensagem.contains("COMMAND=DELETE")){
-                        mensagem.replace("COMMAND=DELETE", "");
+                    if(mensagem.contains("COMMAND=DELETE:")){
+                        mensagem = mensagem.replace("COMMAND=DELETE:", "");
                         for (Gerenciador cliente : Server.vect) {
-                            if(cliente.id == this.id)
-                                cliente.outputData.writeUTF("Você: " + mensagem);
-                            else
-                                cliente.outputData.writeUTF("COMMAND=DELETE=" + this.nome + ": "+ mensagem);
-                                //IMPLEMENTAR CONDIÇÃO PARA APAGAR MENSAGEM
+                            if(cliente.id != this.id && cliente.online)
+                                cliente.outputData.writeUTF("COMMAND=DELETE:" + this.nome + ": "+ mensagem);
                         }
-                    } else {
-                        //por exemplo, para reenviar as mensagens recebidas p todo mundo, eh so fazer
+                    } else if(mensagem.equals("FINALIZAR()")){
+                        for (Gerenciador cliente: Server.vect){
+                            if(cliente.id != this.id && cliente.online)
+                                cliente.outputData.writeUTF(this.nome + " saiu do chat.");
+                        }
+                        this.outputData.writeUTF("FINALIZAR()");
+                        this.outputData.close();
+                        this.inputData.close();
+                        this.online = false;
+                        this.nome = "";
+
+                    }else {
                         for (Gerenciador cliente : Server.vect) {
-                            if(cliente.id == this.id)
+                            if(cliente.id == this.id && cliente.online)
                                 cliente.outputData.writeUTF("Você: " + mensagem);
                             else
                                 cliente.outputData.writeUTF(this.nome + ": "+ mensagem);
                         }
                     }
-
-
                     if (false) {//essa aberracao so existe pq se nao da erro de codigo inalcancavel
                         break;
                     }
@@ -135,16 +157,15 @@ class Gerenciador implements Runnable {
             }catch (IOException e) {
                 e.printStackTrace();
             }
-
         }
-//        try
-//        {
-//            // closing resources
-//            this.inputData.close();
-//            this.outputData.close();
-//
-//        }catch(IOException e){
-//            e.printStackTrace();
-//        }
+        try
+        {
+            // closing resources
+            this.inputData.close();
+            this.outputData.close();
+
+        }catch(IOException e){
+            e.printStackTrace();
+        }
     }
 }
