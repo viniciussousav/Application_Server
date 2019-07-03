@@ -1,4 +1,3 @@
-
 import javax.swing.*;
 import java.io.*;
 import java.util.*;
@@ -6,31 +5,22 @@ import java.net.*;
 
 public class Server
 {
-    //O gerenciador eh "o cliente", ele vai ter os atributos como cache, status de online etc
     static Vector <Gerenciador> vect = new Vector<>();
     static int NumDeClientes = 0;
     static DefaultListModel<String> cache = new DefaultListModel<>();
 
     public static void main(String[] args){
-        //o main so executa o servidor easy peasy
         Server servidor = new Server();
     }
     private Server() {
-        //a porta usada para comunicacao
         int porta = 12345;
-        //inicializacao do socket por causa do try catch :/
         ServerSocket socketServer = null;
         try {
             socketServer = new ServerSocket(porta);
-        } catch (Exception e) {
-            //ele tem q estar no bloco try catch :/
-        }
+        } catch (Exception e) { }
         Socket novoSocket;
 
-
-        //os "clientes" vao ser criados a partir de agora
         while (true) {
-            //inicializacao dos inputs e outputs e do novo socket, isso para o novo cliente
 
             DataInputStream inputData = null;
             DataOutputStream outputData = null;
@@ -41,24 +31,19 @@ public class Server
                 inputData = new DataInputStream(novoSocket.getInputStream());
                 outputData = new DataOutputStream(novoSocket.getOutputStream());
             } catch (Exception e) {
-                //eles tem q estar no bloco try catch :/
             }
 
-            //inicializando um novo gerente para o novo cliente.
             Gerenciador novo = new Gerenciador(NumDeClientes,novoSocket, inputData, outputData);
-            //inicia a thread, p poder receber msgs de todos ao msm tempo :p
             Thread THREAD = new Thread(novo);
-            //cliente adicionado a lista de clientes ativos
             vect.add(novo);
             THREAD.start();
             NumDeClientes++;
         }
-    } //classe do servidor, que executa as threads
+    }
 }
 
 class Gerenciador implements Runnable {
     Scanner in = new Scanner(System.in);
-    //lista de atributos do "cliente" como eu disse la em cima, so coloquei as necessarias para o funcionamento mais basico
     final DataInputStream inputData;
     final DataOutputStream outputData;
     Socket novoSocket;
@@ -79,9 +64,6 @@ class Gerenciador implements Runnable {
     }
 
     public void run() {
-        //aqui eh o q vai rolar dentro da thread, a unica coisa importante daqui eh a mensagem, pois eh a unica funcao do
-        //servidor, receber mensagens :p
-        //Os blocos try catch sao por causa dos erros :)
         String mensagem;
         while (online)
         {
@@ -98,7 +80,9 @@ class Gerenciador implements Runnable {
                     if(unicoNome) {
                         checkNome = true;
                         this.nome = inserirNome;
-                        this.outputData.writeUTF("Bem vindo ao chat, " + this.nome);
+                        this.outputData.writeUTF("Bem vindo ao WhatsMyApp(Infracom 2019.1), " + this.nome);
+                        this.outputData.writeUTF("Feito por: Marcela, Pedro, Vinicius, Gabriela, Hugo e Luan");
+                        this.outputData.writeUTF("Para sair digite: FINALIZAR() e então feche a janela");
                         String usuariosOnline = "";
                         for (Gerenciador cliente: Server.vect){
                             if (!cliente.nome.isEmpty() && cliente.id != this.id && cliente.online) {
@@ -109,7 +93,7 @@ class Gerenciador implements Runnable {
                         if(usuariosOnline.isEmpty()) {
                             this.outputData.writeUTF("Ainda não há usuários online no chat");
                         } else {
-                                this.outputData.writeUTF("Usúarios no chat: " + usuariosOnline);
+                            this.outputData.writeUTF("Usúarios no chat: " + usuariosOnline);
                         }
                         for (Gerenciador cliente : Server.vect) {
                             if(cliente.id != this.id && cliente.online)
@@ -121,7 +105,6 @@ class Gerenciador implements Runnable {
                     }
 
                 } else {
-                    //PARTE IMPORTANTE
                     mensagem = inputData.readUTF();
                     Server.cache.addElement(mensagem);
 
@@ -143,14 +126,28 @@ class Gerenciador implements Runnable {
                         this.nome = "";
 
                     }else {
+                        Vector<String> recebidoVec = new Vector<>();
                         for (Gerenciador cliente : Server.vect) {
-                            if(cliente.id == this.id && cliente.online)
-                                cliente.outputData.writeUTF("Você: " + mensagem);
-                            else
+                            if(cliente.id != this.id && cliente.online){
                                 cliente.outputData.writeUTF(this.nome + ": "+ mensagem);
+                                recebidoVec.add(cliente.nome);
+                            }
+                        }
+
+                        if(recebidoVec.size() == 0){
+                            this.outputData.writeUTF("Você: " + mensagem + " (Ninguém recebeu a mensagem)");
+                        } else {
+                            String recebidoMensagem = "";
+                            for (int i = 0; i < recebidoVec.size(); i++){
+                                if(i == recebidoVec.size() - 1)
+                                    recebidoMensagem += recebidoVec.elementAt(i) + ".";
+                                else
+                                    recebidoMensagem += recebidoVec.elementAt(i) + ", ";
+                            }
+                            this.outputData.writeUTF("Você: " + mensagem + " (Mensagem recebida por: " + recebidoMensagem + ")") ;
                         }
                     }
-                    if (false) {//essa aberracao so existe pq se nao da erro de codigo inalcancavel
+                    if (false) {
                         break;
                     }
                 }
@@ -160,7 +157,6 @@ class Gerenciador implements Runnable {
         }
         try
         {
-            // closing resources
             this.inputData.close();
             this.outputData.close();
 
